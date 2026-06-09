@@ -15,9 +15,9 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION ---
-SENDER_EMAIL = "globalmatrixteam.com@gmail.com"
-SENDER_APP_PASSWORD = "abapleacdxuswbe"
+# --- SMTP EMAIL CONFIGURATION (UPDATED) ---
+SENDER_EMAIL = "Globalmatrixteam.com@gmail.com"
+SENDER_APP_PASSWORD = "gelzuljcnpinidmf"
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
     try:
