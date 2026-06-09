@@ -262,6 +262,13 @@ def index():
         return redirect(url_for('login'))
         
     announcement = query_db("SELECT value FROM system_config WHERE key='system_announcement'", one=True)[0]
+    
+    # Check if admin session is running
+    if session.get('is_admin', False):
+        panel = request.args.get('panel', 'Admin_Deposits')
+    else:
+        panel = request.args.get('panel', 'Overview')
+
     user_metrics = query_db("SELECT balance, liquidation, active_level, ref_code FROM users WHERE username=?", (session['current_user'],), one=True)
     wallet_bal, liquid_bal, level_tag, reference_hash = user_metrics if user_metrics else (0.00, 0.00, '👑 VIP LEVEL 1', 'MX00')
     
@@ -278,7 +285,6 @@ def index():
     t2_bonus = float(query_db("SELECT value FROM system_config WHERE key='tier2_bonus_pct'", one=True)[0])
     t3_bonus = float(query_db("SELECT value FROM system_config WHERE key='tier3_bonus_pct'", one=True)[0])
     
-    panel = request.args.get('panel', 'Overview')
     today_date = time.strftime("%Y-%m-%d")
     has_approved_deposit = bool(query_db("SELECT id FROM deposits WHERE username=? AND status='Approved'", (session['current_user'],), one=True))
 
@@ -288,7 +294,7 @@ def index():
 
     # --- PRIVILEGED ADMINISTRATIVE MASTER HUB CONTROLLER ---
     if session.get('is_admin', False):
-        content_html = """
+        content_html = f"""
         <h4 style='color:#00f0ff; text-align:center; font-family:"Orbitron"; font-weight:900;'>🛡️ CORE ADMINISTRATIVE MATRIX CONTROL</h4>
         <div class="admin-nav-grid">
             <button onclick="window.location.href='/?panel=Admin_Deposits'">📥 DEPOSITS</button>
@@ -301,7 +307,7 @@ def index():
         <hr style="border-color:#ff0055; opacity:0.3; margin-bottom:20px;">
         """
         
-        if panel == 'Admin_Deposits' or panel == 'Overview':
+        if panel == 'Admin_Deposits':
             pending_items = query_db("SELECT id, username, bank, name, trx_id, amount FROM deposits WHERE status='Pending'")
             if not pending_items: content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>Verification queue empty.</p>"
             for item in pending_items:
@@ -508,7 +514,7 @@ def index():
         </form>
         """
 
-    elif panel == 'Promote_Video' or panel == 'Promote':
+    elif panel == 'Promote':
         content_html += """
         <h5 style='font-family:"Orbitron"; color:#00f0ff; font-weight:900;'>📢 SELF-SERVICE TRAFFIC AD CAMPAIGN GENERATOR</h5>
         <form method="POST" action="/submit_campaign">
@@ -569,14 +575,14 @@ def login():
             session['logged_in'] = True
             session['current_user'] = "Mani"
             session['is_admin'] = True
-            return redirect(url_for('index'))
+            return redirect(url_for('index', panel='Admin_Deposits'))
         else:
             record = query_db("SELECT password, username FROM users WHERE username=?", (username,), one=True)
             if record and record[0] == password:
                 session['logged_in'] = True
                 session['current_user'] = record[1]
                 session['is_admin'] = False
-                return redirect(url_for('index'))
+                return redirect(url_for('index', panel='Overview'))
             else:
                 error_banner = "❌ SECURE CREDENTIAL MISMATCH ACCESSED DENIED"
     
@@ -592,6 +598,7 @@ def login():
     
     <hr style="border-color:#ff0055; opacity:0.1; margin: 25px 0;">
     
+    <!-- RESTORED STREAMLIT STYLE MULTI-BUTTON INTERFACE WITH CYBER GRADIENTS -->
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
         <button onclick="window.location.href='/login'" style="background: linear-gradient(135deg, #ff0055 0%, #a100ff 100%) !important; text-align: left; padding-left: 20px !important;">🆔 LOGIN ID</button>
         <button onclick="window.location.href='/register'" style="background: linear-gradient(135deg, #ff0055 0%, #a100ff 100%) !important; text-align: left; padding-left: 20px !important;">🎮 CREATE ACCOUNT</button>
@@ -647,7 +654,7 @@ def register():
         """
     else:
         reg_html = """
-        <div class="brand-title">𝗚𝗟𝗢𝗕𝗔𝗟 <b><b>𝗠𝗔𝗧𝗥𝗜𝗫</b></b></div>
+        <div class="brand-title">𝗚𝗟𝗢𝗕Ａ𝗟 <b><b>𝗠𝗔𝗧𝗥𝗜𝗫</b></b></div>
         <div class="brand-subtitle">INITIALIZE MATRIX ACCREDITATION LOG</div>
         <form method="POST">
             <input type="hidden" name="step" value="1">
