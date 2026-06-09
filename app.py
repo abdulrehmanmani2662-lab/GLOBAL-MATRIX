@@ -15,9 +15,11 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION ---
-SENDER_EMAIL = "Globalmatrixteam.com@gmail.com"
-SENDER_APP_PASSWORD = "gelzuljcnpinidmf"
+# --- SMTP CONFIGURATION (CONFIGURED WITH YOUR BREVO API KEY) ---
+SMTP_SERVER = "smtp-relay.brevo.com"
+SMTP_PORT = 587
+SENDER_EMAIL = "Globalmatrixteam.com@gmail.com" 
+SENDER_APP_PASSWORD = "xsmtpsib-bc1418aaa30eddf05bdadad2344c9f3290cbae0c3714bfd6ee51e822949180ce-vc7c469V1mDlM75C" 
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
     server = None
@@ -44,26 +46,24 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        # Explicitly handling connection to bypass Render block
-        logger.info("Attempting connection to smtp.gmail.com on Port 587...")
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=20)
+        logger.info(f"Connecting to Brevo Relay Service ({SMTP_SERVER}) via Port {SMTP_PORT}...")
+        server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT, timeout=20)
         
         server.ehlo()
-        logger.info("Starting TLS Handshake...")
-        server.starttls()  # Secure encryption line
+        logger.info("Initializing Secure TLS Session...")
+        server.starttls()
         server.ehlo()
         
-        logger.info("Attempting Login with App Password...")
+        logger.info("Authenticating Master Brevo Credentials...")
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         
-        logger.info("Sending Email Payload...")
+        logger.info("Transmitting Encrypted Email Payload...")
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
         
         server.quit()
-        logger.info(f"✅ OTP Successfully sent to {receiver_email}")
+        logger.info(f"✅ OTP Successfully sent to {receiver_email} via Brevo SMTP Gateway!")
         return True
     except Exception as e:
-        # Yeh aapko Render dashboard ke live logs mein dikhayega ki asal dikkat kya hai
         logger.error(f"❌ DETAILED SMTP ERROR DETAILS: {str(e)}")
         if server:
             try:
@@ -772,14 +772,4 @@ def update_user_balance():
 @app.route('/reply_ticket', methods=['POST'])
 def reply_ticket():
     if session.get('is_admin', False):
-        query_db("UPDATE support_tickets SET reply=?, status='Resolved' WHERE id=?", (request.form.get('reply_text'), request.form.get('ticket_id')), commit=True)
-    return redirect(url_for('index', panel='Admin_Tickets'))
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+        query_db("UPDATE support_tickets SET reply=?, status='Resolved' WHERE id=?", (request.form.get('reply_text'), request.form.get('ticket_
