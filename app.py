@@ -15,7 +15,7 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION (UPDATED) ---
+# --- SMTP EMAIL CONFIGURATION (UPDATED FOR TLS/STARTTLS) ---
 SENDER_EMAIL = "Globalmatrixteam.com@gmail.com"
 SENDER_APP_PASSWORD = "gelzuljcnpinidmf"
 
@@ -43,13 +43,18 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
+        # --- FIXED CONNECTION FOR RENDER HOSTING (Port 587 with STARTTLS) ---
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
+        server.ehlo()
+        server.starttls() # Secure encryption layer initialize
+        server.ehlo()
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
         server.quit()
+        logger.info(f"✅ OTP Successfully sent to {receiver_email}")
         return True
     except Exception as e:
-        logger.error(f"Email Error: {e}")
+        logger.error(f"❌ SMTP Handshake/Email Error: {e}")
         return False
 
 # --- SUPPORTED MALAYSIAN PAYMENT CHANNELS ---
