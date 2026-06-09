@@ -15,9 +15,9 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION (UPDATED WITH NEW APP PASSWORD) ---
+# --- SMTP EMAIL CONFIGURATION ---
 SENDER_EMAIL = "globalmatrixteam.com@gmail.com"
-SENDER_APP_PASSWORD = "abapleacdxuswbe"  # spaces remove kar diye hain automatic connection ke liye
+SENDER_APP_PASSWORD = "abapleacdxuswbe"
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
     try:
@@ -43,7 +43,6 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        # SSL layer handshakes secure terminal activation
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
@@ -109,7 +108,6 @@ def init_db():
         for key, val in configs:
             cursor.execute("INSERT OR IGNORE INTO system_config VALUES (?, ?)", (key, val))
             
-        # Admin Default Credentials Check Isolation
         cursor.execute("INSERT OR IGNORE INTO users VALUES ('Mani', 'MANI2662', 0.0, 0.0, 'OWNER', 'MASTER', '')")
         conn.commit()
         conn.close()
@@ -516,7 +514,6 @@ def login():
         username = request.form.get('username','').strip()
         password = request.form.get('password','').strip()
         
-        # Absolute case normalization pattern for Admin Mani
         if username.lower() == "mani" and password == "MANI2662":
             session['logged_in'] = True
             session['current_user'] = "Mani"
@@ -769,4 +766,8 @@ def reply_ticket():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
