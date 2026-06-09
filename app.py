@@ -15,11 +15,12 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION (UPDATED FOR TLS/STARTTLS) ---
+# --- SMTP EMAIL CONFIGURATION ---
 SENDER_EMAIL = "Globalmatrixteam.com@gmail.com"
 SENDER_APP_PASSWORD = "gelzuljcnpinidmf"
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
+    server = None
     try:
         msg = MIMEMultipart()
         msg['From'] = f"Global Matrix <{SENDER_EMAIL}>"
@@ -43,18 +44,32 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        # --- FIXED CONNECTION FOR RENDER HOSTING (Port 587 with STARTTLS) ---
-        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=15)
+        # Explicitly handling connection to bypass Render block
+        logger.info("Attempting connection to smtp.gmail.com on Port 587...")
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=20)
+        
         server.ehlo()
-        server.starttls() # Secure encryption layer initialize
+        logger.info("Starting TLS Handshake...")
+        server.starttls()  # Secure encryption line
         server.ehlo()
+        
+        logger.info("Attempting Login with App Password...")
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
+        
+        logger.info("Sending Email Payload...")
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
+        
         server.quit()
         logger.info(f"✅ OTP Successfully sent to {receiver_email}")
         return True
     except Exception as e:
-        logger.error(f"❌ SMTP Handshake/Email Error: {e}")
+        # Yeh aapko Render dashboard ke live logs mein dikhayega ki asal dikkat kya hai
+        logger.error(f"❌ DETAILED SMTP ERROR DETAILS: {str(e)}")
+        if server:
+            try:
+                server.close()
+            except:
+                pass
         return False
 
 # --- SUPPORTED MALAYSIAN PAYMENT CHANNELS ---
@@ -139,7 +154,6 @@ def query_db(query, args=(), one=False, commit=False):
         conn.close()
         return None if one else []
 
-# --- MULTI-TIER NETWORK COMMISSIONS ---
 def credit_multi_tier_commissions(user, base_reward):
     try:
         t1_pct = float(query_db("SELECT value FROM system_config WHERE key='tier1_bonus_pct'", one=True)[0]) / 100.0
@@ -163,7 +177,6 @@ def credit_multi_tier_commissions(user, base_reward):
     except Exception as e:
         logger.error(f"Commission Distribution Mismatch: {e}")
 
-# --- SYNCHRONIZE USER VIP TIERS ---
 def sync_user_vip_tier(username):
     try:
         total_approved = query_db("SELECT SUM(amount) FROM deposits WHERE username=? AND status='Approved'", (username,), one=True)
@@ -184,7 +197,6 @@ def generate_live_activity_logs():
     actions = ["claimed Video Reward RM4.50", "withdrew RM250.00 via Touch 'n Go", "unlocked VIP Level 2", "won RM10.00 on Lucky Wheel", "completed Daily Check-In"]
     return " &nbsp;&nbsp;&nbsp;&nbsp;||&nbsp;&nbsp;&nbsp;&nbsp; ".join([f"⚡ {random.choice(users_pool)} {random.choice(actions)}" for _ in range(10)])
 
-# --- MASTER LAYOUT INJECTION CORE ---
 BASE_LAYOUT = """
 <!DOCTYPE html>
 <html lang="en">
@@ -231,7 +243,6 @@ BASE_LAYOUT = """
 </html>
 """
 
-# --- BASE ROUTER ARCHITECTURE ---
 @app.route('/')
 def index():
     if 'logged_in' not in session or not session['logged_in']:
@@ -358,7 +369,6 @@ def index():
         content_html += '<button onclick="window.location.href=\'/logout\'" style="margin-top:30px; background:red !important;">LOGOUT DISCONNECT SECURITY GATE</button>'
         return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", content_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
-    # --- STANDARD USER VIEW ---
     content_html = f"""
     <div class="brand-title">GLOBAL <b><b>MATRIX</b></b></div>
     <div class="announcement-box">{announcement}</div>
@@ -508,7 +518,6 @@ def index():
     return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", content_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
 
-# --- USER ROUTINES SECURITY AND REBOOT ---
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     success_banner = session.pop('success_flash', '')
@@ -657,7 +666,6 @@ def register():
         """
     return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", reg_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
-# --- REVENUE PROCESSING TERMINAL PIPELINES ---
 @app.route('/claim_spin')
 def claim_spin():
     if 'logged_in' in session:
@@ -719,7 +727,6 @@ def submit_ticket():
         session['success_flash'] = "🎫 Ticket log opened. Support dispatch alerted."
     return redirect(url_for('index', panel='Support_Helpdesk'))
 
-# --- BACKEND CONTROL NODES ---
 @app.route('/action_deposit')
 def action_deposit():
     if session.get('is_admin', False):
