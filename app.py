@@ -671,7 +671,7 @@ def claim_spin():
 def claim_checkin():
     if 'logged_in' in session:
         today = time.strftime("%Y-%m-%d")
-        query_db("INSERT OR IGNORE INTO checkins VALUES (?, ?)", (session['current_user'], today, commit=True))
+        query_db("INSERT OR IGNORE INTO checkins VALUES (?, ?)", (session['current_user'], today), commit=True)
         query_db("UPDATE users SET balance = balance + 0.50 WHERE username=?", (session['current_user'],), commit=True)
         session['success_flash'] = "✅ Checked in! +RM 0.50 added successfully."
     return redirect(url_for('index'))
@@ -769,8 +769,4 @@ def reply_ticket():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('login'))
-
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port)
+    return redirect(url
