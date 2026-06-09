@@ -70,9 +70,6 @@ MALAYSIAN_BANKS = [
 
 # --- PLATFORM SCHEMATIC DATABASE MANAGEMENT INTERFACE ---
 def init_db():
-    """
-    Establishes relational vault architectures and binds primary database integrity models.
-    """
     try:
         conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
         cursor = conn.cursor()
@@ -89,83 +86,14 @@ def init_db():
             )
         """)
         
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS system_config (
-                key TEXT PRIMARY KEY, 
-                value TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS deposits (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                username TEXT, 
-                bank TEXT, 
-                name TEXT, 
-                trx_id TEXT, 
-                amount REAL, 
-                status TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS checkins (
-                username TEXT, 
-                date TEXT, 
-                PRIMARY KEY (username, date)
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS ad_logs (
-                username TEXT, 
-                ad_id TEXT, 
-                date TEXT, 
-                PRIMARY KEY (username, ad_id, date)
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS lucky_spins (
-                username TEXT, 
-                date TEXT, 
-                prize REAL, 
-                PRIMARY KEY (username, date)
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS withdrawals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                username TEXT, 
-                bank TEXT, 
-                account TEXT, 
-                amount REAL, 
-                status TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS ad_campaigns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                advertiser_email TEXT, 
-                video_url TEXT, 
-                target_views INTEGER, 
-                trx_id TEXT, 
-                status TEXT
-            )
-        """)
-        
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS support_tickets (
-                id INTEGER PRIMARY KEY AUTOINCREMENT, 
-                username TEXT, 
-                subject TEXT, 
-                message TEXT, 
-                reply TEXT, 
-                status TEXT
-            )
-        """)
+        cursor.execute("CREATE TABLE IF NOT EXISTS system_config (key TEXT PRIMARY KEY, value TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS deposits (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, bank TEXT, name TEXT, trx_id TEXT, amount REAL, status TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS checkins (username TEXT, date TEXT, PRIMARY KEY (username, date))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS ad_logs (username TEXT, ad_id TEXT, date TEXT, PRIMARY KEY (username, ad_id, date))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS lucky_spins (username TEXT, date TEXT, prize REAL, PRIMARY KEY (username, date))")
+        cursor.execute("CREATE TABLE IF NOT EXISTS withdrawals (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, bank TEXT, account TEXT, amount REAL, status TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS ad_campaigns (id INTEGER PRIMARY KEY AUTOINCREMENT, advertiser_email TEXT, video_url TEXT, target_views INTEGER, trx_id TEXT, status TEXT)")
+        cursor.execute("CREATE TABLE IF NOT EXISTS support_tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, subject TEXT, message TEXT, reply TEXT, status TEXT)")
         
         try:
             cursor.execute("ALTER TABLE users ADD COLUMN referred_by TEXT")
@@ -200,9 +128,6 @@ def init_db():
 init_db()
 
 def query_db(query, args=(), one=False, commit=False):
-    """
-    Thread-safe abstract interaction terminal routing system metrics.
-    """
     conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
     conn.execute("PRAGMA foreign_keys = ON")
     cursor = conn.cursor()
@@ -223,76 +148,53 @@ def query_db(query, args=(), one=False, commit=False):
 
 # --- DYNAMIC MULTI-LEVEL NETWORK AFFILIATE DELEGATOR CONTROLLER ---
 def credit_multi_tier_commissions(user, base_reward):
-    """
-    Iterates dynamically through user ancestry nodes up to 3 parent vectors to deploy commission payouts.
-    """
     try:
         t1_pct = float(query_db("SELECT value FROM system_config WHERE key='tier1_bonus_pct'", one=True)[0]) / 100.0
         t2_pct = float(query_db("SELECT value FROM system_config WHERE key='tier2_bonus_pct'", one=True)[0]) / 100.0
         t3_pct = float(query_db("SELECT value FROM system_config WHERE key='tier3_bonus_pct'", one=True)[0]) / 100.0
 
-        # Tier 1 Verification & Execution
         tier_1_parent = query_db("SELECT referred_by FROM users WHERE username=?", (user,), one=True)
-        if not tier_1_parent or not tier_1_parent[0]: 
-            return
+        if not tier_1_parent or not tier_1_parent[0]: return
         p1 = tier_1_parent[0].strip()
         if p1:
             amt1 = base_reward * t1_pct
             query_db("UPDATE users SET balance = balance + ? WHERE username=?", (amt1, p1), commit=True)
-            logger.info(f"Tier 1 Affiliate Node {p1} credited with RM {amt1:.4f}")
         
-        # Tier 2 Verification & Execution
         tier_2_parent = query_db("SELECT referred_by FROM users WHERE username=?", (p1,), one=True)
-        if not tier_2_parent or not tier_2_parent[0]: 
-            return
+        if not tier_2_parent or not tier_2_parent[0]: return
         p2 = tier_2_parent[0].strip()
         if p2:
             amt2 = base_reward * t2_pct
             query_db("UPDATE users SET balance = balance + ? WHERE username=?", (amt2, p2), commit=True)
-            logger.info(f"Tier 2 Affiliate Node {p2} credited with RM {amt2:.4f}")
         
-        # Tier 3 Verification & Execution
         tier_3_parent = query_db("SELECT referred_by FROM users WHERE username=?", (p2,), one=True)
-        if not tier_3_parent or not tier_3_parent[0]: 
-            return
+        if not tier_3_parent or not tier_3_parent[0]: return
         p3 = tier_3_parent[0].strip()
         if p3:
             amt3 = base_reward * t3_pct
             query_db("UPDATE users SET balance = balance + ? WHERE username=?", (amt3, p3), commit=True)
-            logger.info(f"Tier 3 Affiliate Node {p3} credited with RM {amt3:.4f}")
     except Exception as tracking_error:
         logger.error(f"Error executing affiliate multi-tier cascade flow: {tracking_error}")
 
 # --- TRACK MATRIX RE-EVALUATION & AUTOMATED VIP TIER TRANSITIONS ---
 def sync_user_vip_tier(username):
-    """
-    Recalculates net input parameters and adjusts network clearance levels.
-    """
     try:
         total_approved = query_db("SELECT SUM(amount) FROM deposits WHERE username=? AND status='Approved'", (username,), one=True)
         total_dep = total_approved[0] if total_approved and total_approved[0] else 0.0
-        
         v2_req = float(query_db("SELECT value FROM system_config WHERE key='vip2_req'", one=True)[0])
         v3_req = float(query_db("SELECT value FROM system_config WHERE key='vip3_req'", one=True)[0])
         
         new_tier = "👑 VIP LEVEL 1"
         liquidation_factor = total_dep * 0.15
-        
-        if total_dep >= v3_req:
-            new_tier = "👑 VIP LEVEL 3"
-        elif total_dep >= v2_req:
-            new_tier = "👑 VIP LEVEL 2"
+        if total_dep >= v3_req: new_tier = "👑 VIP LEVEL 3"
+        elif total_dep >= v2_req: new_tier = "👑 VIP LEVEL 2"
             
         query_db("UPDATE users SET active_level=?, liquidation=? WHERE username=?", (new_tier, liquidation_factor, username), commit=True)
-        logger.info(f"User {username} calibrated to tier {new_tier} with risk index {liquidation_factor}")
     except Exception as calibration_error:
         logger.error(f"Failed to synchronize VIP alignment vector: {calibration_error}")
 
 # --- SIMULATED ACTIVITY STREAM BOOSTER FOR USER RETENTION ---
 def generate_live_activity_logs():
-    """
-    Produces real-time platform tracking logs dynamically to mimic a high-traffic environment.
-    """
     users_pool = ["Zaki_TNG", "Aiman_99", "Mani_Admin", "Siti_Aminah", "Raju_Bitcoin", "Michelle_KL", "Chao_Matrix", "Firdaus_Dev", "Wong_Settle", "Aziz_Crypto"]
     actions = [
         "claimed Dynamic Video Bounty RM4.50", "processed exit settlement RM250.00 via Touch 'n Go", 
@@ -320,10 +222,10 @@ BASE_LAYOUT = """
         .fomo-ticker-container { width: 100%; background: linear-gradient(90deg, #ff0055 0%, #a100ff 100%); padding: 6px 0; margin-bottom: 20px; box-shadow: 0 0 10px rgba(255,0,85,0.4); text-align: center; }
         .fomo-text { font-family: 'Orbitron', sans-serif !important; font-size: 14px; font-weight: bold; color: #ffffff; letter-spacing: 1px; }
         .brand-title { text-align: center; font-family: 'Orbitron', sans-serif !important; font-size: 38px; font-weight: 900; color: #ffffff; margin-top: 10px; letter-spacing: 3px; text-shadow: 0 0 10px rgba(0,240,255,0.5); }
-        .brand-subtitle { text-align: center; font-family: 'Orbitron', sans-serif !important; font-size: 14px; font-weight: bold; color: #ff0055; letter-spacing: 2px; margin-bottom: 25px; }
+        .brand-subtitle { text-align: center; font-family: 'Orbitron', sans-serif !important; font-size: 14px; font-weight: bold; color: #ff0055; letter-spacing: 2px; margin-bottom: 25px; text-transform: uppercase; }
         .announcement-box { background: #1a090d; border: 2px solid #ff0055; border-radius: 14px; padding: 15px; font-size: 14px; color: #ff3377 !important; font-weight: 800; margin-bottom: 20px; text-align: center; font-family: 'Orbitron', sans-serif !important; }
         .metric-card-box { background: linear-gradient(135deg, #12131a 0%, #1f2026 100%); border: 2px solid #00f0ff; border-radius: 20px; padding: 25px 20px; text-align: center; margin-bottom: 20px; box-shadow: 0 0 15px rgba(0,240,255,0.2); }
-        input, select, textarea { width: 100%; background-color: #12131a !important; color: #ffffff !important; border: 2px solid #ff0055 !important; border-radius: 12px !important; font-weight: 900 !important; font-family: 'Orbitron', sans-serif !important; padding: 12px !important; font-size: 16px; box-shadow: 0 0 8px rgba(255, 0, 85, 0.2); margin-bottom: 15px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; background-color: #12131a !important; color: #ffffff !important; border: 2px solid #ff0055 !important; border-radius: 12px !important; font-weight: 900 !important; font-family: 'Orbitron', sans-serif !important; padding: 12px !important; font-size: 14px; box-shadow: 0 0 8px rgba(255, 0, 85, 0.2); margin-bottom: 15px; box-sizing: border-box; text-transform: uppercase; }
         button, .btn-link { display: block; background: linear-gradient(135deg, #a100ff 0%, #ff0055 100%) !important; color: #ffffff !important; font-family: 'Orbitron', sans-serif !important; font-size: 15px !important; font-weight: 900; border-radius: 14px !important; width: 100% !important; padding: 14px !important; border: none !important; box-shadow: 0 4px 15px rgba(255, 0, 85, 0.4); text-align: center; text-decoration: none; box-sizing: border-box; cursor: pointer; margin-bottom: 10px; }
         button:hover { box-shadow: 0 0 20px rgba(0, 240, 255, 0.6); transform: scale(1.01); transition: 0.2s; }
         .custom-matrix-box-cyan { background: #12131a; border: 2px solid #00f0ff; border-radius: 14px; padding: 16px; margin: 15px 0; font-family: 'Orbitron', sans-serif !important; font-weight: 600; }
@@ -342,7 +244,7 @@ BASE_LAYOUT = """
         <marquee class="running-text" scrollamount="5">⚡ MATRIX SECURITY NODES ONLINE &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; HARDWARE RE-EVALUATION INTERFACE LAYER: 2026 ACTIVE</marquee>
     </div>
     <div class="fomo-ticker-container">
-        <marquee class="fomo-text" scrollamount="4">{{ dynamic_ticker }}</marquee>
+        <marquee class="fomo-text" scrollamount="4">{{ dynamic_ticker|safe }}</marquee>
     </div>
     <div class="wrapper">
         {% if msg_success %}<div class="alert-success">{{ msg_success }}</div>{% endif %}
@@ -401,8 +303,7 @@ def index():
         
         if panel == 'Admin_Deposits' or panel == 'Overview':
             pending_items = query_db("SELECT id, username, bank, name, trx_id, amount FROM deposits WHERE status='Pending'")
-            if not pending_items: 
-                content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>Verification queue empty.</p>"
+            if not pending_items: content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>Verification queue empty.</p>"
             for item in pending_items:
                 content_html += f"""
                 <div style='background-color:#12131a; padding:18px; border-radius:14px; border:2px solid #ff0055; margin-bottom:12px; font-family:"Orbitron";'>
@@ -452,8 +353,7 @@ def index():
             """
         elif panel == 'Admin_Withdraws':
             pending_with = query_db("SELECT id, username, bank, account, amount FROM withdrawals WHERE status='Pending'")
-            if not pending_with: 
-                content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>No withdrawal configurations pending.</p>"
+            if not pending_with: content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>No withdrawal configurations pending.</p>"
             for w_item in pending_with:
                 content_html += f"""
                 <div style='background-color:#12131a; padding:15px; border-radius:12px; border:2px solid #a100ff; margin-bottom:10px; font-family:"Orbitron";'>
@@ -468,8 +368,7 @@ def index():
                 """
         elif panel == 'Admin_Campaigns':
             pending_camps = query_db("SELECT id, advertiser_email, video_url, target_views, trx_id FROM ad_campaigns WHERE status='Pending'")
-            if not pending_camps: 
-                content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>No video campaigns currently active.</p>"
+            if not pending_camps: content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>No video campaigns currently active.</p>"
             for camp in pending_camps:
                 content_html += f"""
                 <div style='background-color:#12131a; padding:15px; border-radius:12px; border:2px solid #00f0ff; margin-bottom:10px; font-family:"Orbitron";'>
@@ -484,8 +383,7 @@ def index():
                 """
         elif panel == 'Admin_Tickets':
             pending_tickets = query_db("SELECT id, username, subject, message FROM support_tickets WHERE status='Pending'")
-            if not pending_tickets: 
-                content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>All tickets clean.</p>"
+            if not pending_tickets: content_html += "<p style='text-align:center;color:#a0a0a5;font-family:\"Orbitron\";'>All tickets clean.</p>"
             for ticket in pending_tickets:
                 content_html += f"""
                 <form method="POST" action="/reply_ticket" style='background-color:#12131a; padding:15px; border-radius:12px; border:2px solid #ff0055; margin-bottom:10px; font-family:"Orbitron";'>
@@ -539,9 +437,7 @@ def index():
                 document.getElementById('spinBtn').onclick = function() {{
                     let targetRotation = 1800 + Math.floor(Math.random() * 360);
                     document.getElementById('wheelCanvas').style.transform = 'rotate(' + targetRotation + 'deg)';
-                    setTimeout(()=>{{
-                        window.location.href = '/claim_spin';
-                    }}, 4100);
+                    setTimeout(()=>{{ window.location.href = '/claim_spin'; }}, 4100);
                 }};
             </script>
             """
@@ -553,10 +449,8 @@ def index():
         if not has_approved_deposit:
             content_html += "<div class='custom-matrix-box-pink' style='text-align:center; color:#ff0055;'>🔒 SECURITY SHIELD LOCKED: Initial validation node approval required to check-in.</div>"
         else:
-            if already_checked:
-                content_html += "<p style='color:#00f0ff; font-weight:bold; text-align:center;'>✅ REWARD BLOCK CLAIMED FOR TODAY</p>"
-            else:
-                content_html += '<button onclick="window.location.href=\'/claim_checkin\'">INITIALIZE REWARD HASH CONVERSION (RM 0.50)</button>'
+            if already_checked: content_html += "<p style='color:#00f0ff; font-weight:bold; text-align:center;'>✅ REWARD BLOCK CLAIMED FOR TODAY</p>"
+            else: content_html += '<button onclick="window.location.href=\'/claim_checkin\'">INITIALIZE REWARD HASH CONVERSION (RM 0.50)</button>'
 
         content_html += f"""
         <hr style='border-color:#ff0055; opacity:0.2; margin:15px 0;'>
@@ -574,14 +468,12 @@ def index():
                 ad_url = query_db(f"SELECT value FROM system_config WHERE key='ad{i}_url'", one=True)[0]
                 ad_rew = float(query_db(f"SELECT value FROM system_config WHERE key='ad{i}_reward'", one=True)[0])
                 ad_watched = query_db("SELECT username FROM ad_logs WHERE username=? AND ad_id=? AND date=?", (session['current_user'], f'ad{i}', today_date), one=True)
-                
                 box_cls = "custom-matrix-box-cyan" if i % 2 != 0 else "custom-matrix-box-pink"
                 content_html += f"""
                 <div class="{box_cls}" style="text-align:center;">
                     <b>Traffic Ad Interface Vector Block {i}</b><br>Yield Allocation: RM {ad_rew:.2f}<br>
                 """
-                if ad_watched:
-                    content_html += "<span style='color:#00f0ff; font-weight:bold;'>✅ BLOCK METRIC RESOLVED</span></div>"
+                if ad_watched: content_html += "<span style='color:#00f0ff; font-weight:bold;'>✅ BLOCK METRIC RESOLVED</span></div>"
                 else:
                     content_html += f"""
                     <a href="{ad_url}" target="_blank" class="btn-link" style="padding:6px; font-size:12px; background:#00f0ff !important; color:#000 !important; margin-top:5px;">📺 RESOLVE TRAFFIC FEED LINK</a>
@@ -597,9 +489,7 @@ def index():
             <span style='color:#a100ff; font-weight:bold;'>📢 TARGET USDT DECENTRALIZED NETWORK STORAGE NODE:</span><br><code style='word-break:break-all;color:#00f0ff;'>{usdt_address}</code>
         </div>
         <form method="POST" action="/submit_deposit">
-            <select name="bank">
-                {"".join([f"<option>{b}</option>" for b in MALAYSIAN_BANKS])}
-            </select>
+            <select name="bank">{"".join([f"<option>{b}</option>" for b in MALAYSIAN_BANKS])}</select>
             <input type="text" name="name" placeholder="ACCOUNT SENDER FULL NAME REFERENCE" required>
             <input type="text" name="trx_id" placeholder="TRANSACTION RECEIPT HASH KEY CODE / TXID ID" required>
             <input type="number" step="0.01" name="amount" value="100.0" required>
@@ -611,9 +501,7 @@ def index():
         content_html += f"""
         <h5 style='font-family:"Orbitron"; color:#00f0ff; font-weight:900;'>EXECUTE SECURE PLATFORM BALANCE EXIT</h5>
         <form method="POST" action="/submit_cashout">
-            <select name="bank">
-                {"".join([f"<option>{b}</option>" for b in MALAYSIAN_BANKS])}
-            </select>
+            <select name="bank">{"".join([f"<option>{b}</option>" for b in MALAYSIAN_BANKS])}</select>
             <input type="text" name="account" placeholder="Enter Target Transfer Route Number / Account Number" required>
             <input type="number" step="0.01" name="amount" placeholder="Total Exit Settle Amount (RM)" required>
             <button type="submit">INITIATE OUTFLOW VERIFICATION TRANSFERS</button>
@@ -644,8 +532,7 @@ def index():
         <b style='font-family:"Orbitron";'>Your Archive Ticket History Feed:</b>
         """
         user_tickets = query_db("SELECT id, subject, message, reply, status FROM support_tickets WHERE username=? ORDER BY id DESC", (session['current_user'],))
-        if not user_tickets: 
-            content_html += "<p style='color:#a0a0a5;text-align:center;font-family:\"Orbitron\";'>No tickets logged inside this network sector.</p>"
+        if not user_tickets: content_html += "<p style='color:#a0a0a5;text-align:center;font-family:\"Orbitron\";'>No tickets logged inside this network sector.</p>"
         for t in user_tickets:
             border_clr = "#ff0055" if t[4] == "Pending" else "#00f0ff"
             content_html += f"""
@@ -656,7 +543,6 @@ def index():
             </div>
             """
 
-    # Persistent Structural Bottom Hotkey Navigation Grid Layout
     content_html += f"""
     <div class="nav-grid">
         <button onclick="window.location.href='/?panel=Overview'">CORE HUB</button>
@@ -697,17 +583,23 @@ def login():
     login_html = """
     <div class="brand-title">𝗚𝗟𝗢𝗕𝗔𝗟 <b><b>𝗠𝗔𝗧𝗥𝗜𝗫</b></b></div>
     <div class="brand-subtitle">SECURE TERMINAL LOG ENTRY ACCESS</div>
+    
     <form method="POST">
         <input type="text" name="username" placeholder="SECURITY ACCREDITED EMAIL IDENTIFIER" required>
         <input type="password" name="password" placeholder="VAULT KEY PASSCODE" required>
         <button type="submit">AUTHORIZE IDENTITY LOG ENTRY</button>
     </form>
-    <div style="text-align:center; margin-top:20px; font-family:'Orbitron';">
-        <p style="color:#a0a0a5;">Identity missing from platform logs?</p>
-        <a href="/register" class="btn-link" style="background:#00f0ff !important; color:#000000 !important; font-size:12px !important; padding:8px !important;">🎮 CONSTRUCT INITIAL SYSTEM LOG TARGET IDENTITY</a>
+    
+    <hr style="border-color:#ff0055; opacity:0.1; margin: 25px 0;">
+    
+    <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
+        <button onclick="window.location.href='/login'" style="background: linear-gradient(135deg, #ff0055 0%, #a100ff 100%) !important; text-align: left; padding-left: 20px !important;">🆔 LOGIN ID</button>
+        <button onclick="window.location.href='/register'" style="background: linear-gradient(135deg, #ff0055 0%, #a100ff 100%) !important; text-align: left; padding-left: 20px !important;">🎮 CREATE ACCOUNT</button>
+        <button onclick="window.location.href='/?panel=Support_Helpdesk'" style="background: linear-gradient(135deg, #ff0055 0%, #a100ff 100%) !important; text-align: left; padding-left: 20px !important;">🔑 FORGET PASSWORD</button>
     </div>
     """
     return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", login_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
+
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -723,8 +615,7 @@ def register():
             referral = request.form.get('referral','').strip()
             
             exists = query_db("SELECT username FROM users WHERE username=?", (email,), one=True)
-            if exists:
-                error_banner = "❌ Vector Fault: Target entry identity already indexed in structural database."
+            if exists: error_banner = "❌ Vector Fault: Target entry identity already indexed."
             else:
                 otp = str(random.randint(100000, 999999))
                 if send_verification_email(email, otp, "Registration"):
@@ -732,23 +623,21 @@ def register():
                     session['reg_pass'] = password
                     session['reg_ref'] = referral
                     session['reg_otp'] = otp
-                    success_banner = "🔑 Security Token Verification code dispatched to target terminal mail node."
-                else:
-                    error_banner = "❌ Infrastructure Gateway Fault: SMTP communication handshake dropped."
+                    success_banner = "🔑 Security Token Verification code dispatched to terminal node."
+                else: error_banner = "❌ Infrastructure Gateway Fault: SMTP handshake dropped."
         elif step == '2':
             user_otp = request.form.get('otp_code','').strip()
             if user_otp == session.get('reg_otp'):
                 generated_ref = "MX" + str(random.randint(1000, 9999))
                 query_db("INSERT INTO users VALUES (?, ?, 0.0, 0.0, '👑 VIP LEVEL 1', ?, ?)",
                          (session['reg_email'], session['reg_pass'], generated_ref, session['reg_ref']), commit=True)
-                session['success_flash'] = "✅ Identity Mapping Logged! Login to allocate network dashboard tools."
+                session['success_flash'] = "✅ Identity Mapping Logged! Login to continue."
                 return redirect(url_for('login'))
-            else:
-                error_banner = "❌ Verification Refused: Security hash key code misaligned."
+            else: error_banner = "❌ Verification Refused: Security hash code misaligned."
 
     if 'reg_otp' in session:
         reg_html = """
-        <div class="brand-title">𝗚𝗟𝗢𝗕𝗔𝗟 <b><b>𝗠𝗔𝗧Ｒ𝑰𝗫</b></b></div>
+        <div class="brand-title">𝗚𝗟𝗢𝗕𝗔𝗟 <b><b>𝗠𝗔𝗧𝗥𝗜𝗫</b></b></div>
         <div class="brand-subtitle">VERIFY REGISTRATION IDENTITY HASH</div>
         <form method="POST">
             <input type="hidden" name="step" value="2">
@@ -758,7 +647,7 @@ def register():
         """
     else:
         reg_html = """
-        <div class="brand-title">𝗚𝗟𝗢𝗕Ａ𝗟 <b><b>𝗠𝗔𝗧Ｒ𝑰𝗫</b></b></div>
+        <div class="brand-title">𝗚𝗟𝗢𝗕𝗔𝗟 <b><b>𝗠𝗔𝗧𝗥𝗜𝗫</b></b></div>
         <div class="brand-subtitle">INITIALIZE MATRIX ACCREDITATION LOG</div>
         <form method="POST">
             <input type="hidden" name="step" value="1">
@@ -783,7 +672,7 @@ def claim_spin():
         today = time.strftime("%Y-%m-%d")
         query_db("INSERT OR IGNORE INTO lucky_spins VALUES (?, ?, ?)", (session['current_user'], today, win_amt), commit=True)
         query_db("UPDATE users SET balance = balance + ? WHERE username=?", (win_amt, session['current_user']), commit=True)
-        session['success_flash'] = f"🎰 Wheel Conversion Complete: Added +RM {win_amt:.2f} directly to fluid storage."
+        session['success_flash'] = f"🎰 Wheel Conversion Complete: Added +RM {win_amt:.2f} to storage."
     return redirect(url_for('index'))
 
 @app.route('/claim_checkin')
@@ -792,7 +681,7 @@ def claim_checkin():
         today = time.strftime("%Y-%m-%d")
         query_db("INSERT OR IGNORE INTO checkins VALUES (?, ?)", (session['current_user'], today), commit=True)
         query_db("UPDATE users SET balance = balance + 0.50 WHERE username=?", (session['current_user'],), commit=True)
-        session['success_flash'] = "✅ Network Node Status Verified! Daily check-in RM 0.50 credited."
+        session['success_flash'] = "✅ Network Node Status Verified! Check-in RM 0.50 credited."
     return redirect(url_for('index'))
 
 @app.route('/claim_ad')
@@ -803,11 +692,8 @@ def claim_ad():
         today = time.strftime("%Y-%m-%d")
         query_db("INSERT OR IGNORE INTO ad_logs VALUES (?, ?, ?)", (session['current_user'], ad_id, today), commit=True)
         query_db("UPDATE users SET balance = balance + ? WHERE username=?", (rew, session['current_user']), commit=True)
-        
-        # Real-time multi tier dynamic commission execution call
         credit_multi_tier_commissions(session['current_user'], rew)
-        
-        session['success_flash'] = f"💰 Matrix Traffic Segment Decrypted! +RM {rew:.2f} Node yield assigned."
+        session['success_flash'] = f"💰 Matrix Traffic Segment Decrypted! +RM {rew:.2f} assigned."
     return redirect(url_for('index'))
 
 @app.route('/submit_deposit', methods=['POST'])
@@ -815,7 +701,7 @@ def submit_deposit():
     if 'logged_in' in session:
         query_db("INSERT INTO deposits (username, bank, name, trx_id, amount, status) VALUES (?, ?, ?, ?, ?, 'Pending')",
                  (session['current_user'], request.form.get('bank'), request.form.get('name'), request.form.get('trx_id'), request.form.get('amount')), commit=True)
-        session['success_flash'] = "🚀 Inflow Proof Dispatched! Target verified reference locked in validation queue."
+        session['success_flash'] = "🚀 Inflow Proof Dispatched for verification."
     return redirect(url_for('index'))
 
 @app.route('/submit_cashout', methods=['POST'])
@@ -827,9 +713,8 @@ def submit_cashout():
             query_db("UPDATE users SET balance = balance - ? WHERE username=?", (amount, session['current_user']), commit=True)
             query_db("INSERT INTO withdrawals (username, bank, account, amount, status) VALUES (?, ?, ?, ?, 'Pending')",
                      (session['current_user'], request.form.get('bank'), request.form.get('account'), amount), commit=True)
-            session['success_flash'] = "✅ Capital outpour settlement configuration submitted successfully."
-        else:
-            session['error_flash'] = "❌ Request Terminated: Target fluid value exceeds current segment volume."
+            session['success_flash'] = "✅ Capital exit configurations submitted."
+        else: session['error_flash'] = "❌ Request Terminated: Insufficient fluid volume."
     return redirect(url_for('index'))
 
 @app.route('/submit_campaign', methods=['POST'])
@@ -837,7 +722,7 @@ def submit_campaign():
     if 'logged_in' in session:
         query_db("INSERT INTO ad_campaigns (advertiser_email, video_url, target_views, trx_id, status) VALUES (?, ?, ?, ?, 'Pending')",
                  (request.form.get('adv_email'), request.form.get('video_url'), request.form.get('views_req'), request.form.get('payment_trx')), commit=True)
-        session['success_flash'] = "📢 Advertiser target metadata packet received and locked for administrative verification."
+        session['success_flash'] = "📢 Advertiser target metadata received."
     return redirect(url_for('index'))
 
 @app.route('/submit_ticket', methods=['POST'])
@@ -845,7 +730,7 @@ def submit_ticket():
     if 'logged_in' in session:
         query_db("INSERT INTO support_tickets (username, subject, message, reply, status) VALUES (?, ?, ?, '', 'Pending')",
                  (session['current_user'], request.form.get('subject'), request.form.get('message')), commit=True)
-        session['success_flash'] = "🎫 Helpdesk route payload dispatched."
+        session['success_flash'] = "🎫 Technical support payload routed."
     return redirect(url_for('index', panel='Support_Helpdesk'))
 
 # --- CORE EXECUTIVE MASTER BOARD MUTATION HANDLERS ---
