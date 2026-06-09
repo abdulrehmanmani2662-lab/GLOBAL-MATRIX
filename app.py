@@ -15,9 +15,9 @@ logger = logging.getLogger("MATRIX_PLATFORM")
 app = Flask(__name__)
 app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 
-# --- SMTP EMAIL CONFIGURATION ---
+# --- SMTP EMAIL CONFIGURATION (UPDATED WITH NEW APP PASSWORD) ---
 SENDER_EMAIL = "globalmatrixteam.com@gmail.com"
-SENDER_APP_PASSWORD = "lddfmerstvilicby"  
+SENDER_APP_PASSWORD = "abapleacdxuswbe"  # spaces remove kar diye hain automatic connection ke liye
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
     try:
@@ -43,6 +43,7 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
+        # SSL layer handshakes secure terminal activation
         server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
@@ -108,7 +109,7 @@ def init_db():
         for key, val in configs:
             cursor.execute("INSERT OR IGNORE INTO system_config VALUES (?, ?)", (key, val))
             
-        # Admin Account Root Setup (Mani Case Normalization Check Included)
+        # Admin Default Credentials Check Isolation
         cursor.execute("INSERT OR IGNORE INTO users VALUES ('Mani', 'MANI2662', 0.0, 0.0, 'OWNER', 'MASTER', '')")
         conn.commit()
         conn.close()
@@ -119,7 +120,6 @@ init_db()
 
 def query_db(query, args=(), one=False, commit=False):
     conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
-    # Anti-lock timeout configurations for Render multi-workers
     conn.execute("PRAGMA busy_timeout = 30000")
     cursor = conn.cursor()
     try:
@@ -256,9 +256,6 @@ def index():
     error_banner = session.pop('error_flash', '')
     live_feed = generate_live_activity_logs()
 
-    # ==========================================
-    #      🛡️ SECURE ADMIN ADMINISTRATIVE CONTROL
-    # ==========================================
     if session.get('is_admin', False):
         content_html = f"""
         <h4 style='color:#00f0ff; text-align:center;'>🛡️ MASTER ADMINISTRATION PANEL</h4>
@@ -358,9 +355,7 @@ def index():
         content_html += '<button onclick="window.location.href=\'/logout\'" style="margin-top:30px; background:red !important;">LOGOUT DISCONNECT SECURITY GATE</button>'
         return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", content_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
-    # ==========================================
-    #      CLEAN ENGLISH USER GRAPHIC HUD VIEW
-    # ==========================================
+    # --- STANDARD USER VIEW ---
     content_html = f"""
     <div class="brand-title">GLOBAL <b><b>MATRIX</b></b></div>
     <div class="announcement-box">{announcement}</div>
@@ -498,7 +493,6 @@ def index():
             </div>
             """
 
-    # --- EASY ENGLISH GLOBAL APP FOOTER MENU NAVIGATION ---
     content_html += f"""
     <div class="nav-grid">
         <button onclick="window.location.href='/?panel=Overview'">HOME</button>
@@ -522,7 +516,7 @@ def login():
         username = request.form.get('username','').strip()
         password = request.form.get('password','').strip()
         
-        # Admin strict credential login matching normalization 
+        # Absolute case normalization pattern for Admin Mani
         if username.lower() == "mani" and password == "MANI2662":
             session['logged_in'] = True
             session['current_user'] = "Mani"
@@ -677,7 +671,7 @@ def claim_spin():
 def claim_checkin():
     if 'logged_in' in session:
         today = time.strftime("%Y-%m-%d")
-        query_db("INSERT OR IGNORE INTO checkins VALUES (?, ?)", (session['current_user'], today), commit=True)
+        query_db("INSERT OR IGNORE INTO checkins VALUES (?, ?)", (session['current_user'], today, commit=True))
         query_db("UPDATE users SET balance = balance + 0.50 WHERE username=?", (session['current_user'],), commit=True)
         session['success_flash'] = "✅ Checked in! +RM 0.50 added successfully."
     return redirect(url_for('index'))
@@ -723,9 +717,7 @@ def submit_ticket():
         session['success_flash'] = "🎫 Ticket log opened. Support dispatch alerted."
     return redirect(url_for('index', panel='Support_Helpdesk'))
 
-# ==========================================
-#     🛡️ OPERATIONAL BACKEND CONTROLLER NODES
-# ==========================================
+# --- BACKEND CONTROL NODES ---
 @app.route('/action_deposit')
 def action_deposit():
     if session.get('is_admin', False):
