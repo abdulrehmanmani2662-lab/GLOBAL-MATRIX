@@ -6,7 +6,7 @@ import time
 import logging
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from flask import Flask, request, redirect, url_for, session, render_template_string, jsonify
+from flask import Flask, request, redirect, url_for, session, render_template_string
 
 # --- LOGGING SYSTEM ---
 logging.basicConfig(level=logging.INFO)
@@ -108,7 +108,7 @@ def init_db():
         for key, val in configs:
             cursor.execute("INSERT OR IGNORE INTO system_config VALUES (?, ?)", (key, val))
             
-        # Admin Account Root Setup
+        # Admin Account Root Setup (Mani Case Normalization Check Included)
         cursor.execute("INSERT OR IGNORE INTO users VALUES ('Mani', 'MANI2662', 0.0, 0.0, 'OWNER', 'MASTER', '')")
         conn.commit()
         conn.close()
@@ -119,6 +119,8 @@ init_db()
 
 def query_db(query, args=(), one=False, commit=False):
     conn = sqlite3.connect("matrix_vault.db", check_same_thread=False)
+    # Anti-lock timeout configurations for Render multi-workers
+    conn.execute("PRAGMA busy_timeout = 30000")
     cursor = conn.cursor()
     try:
         cursor.execute(query, args)
@@ -130,6 +132,7 @@ def query_db(query, args=(), one=False, commit=False):
         conn.close()
         return (rv[0] if rv else None) if one else rv
     except Exception as e:
+        logger.error(f"DB Query Exception: {e}")
         conn.close()
         return None if one else []
 
@@ -518,7 +521,9 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username','').strip()
         password = request.form.get('password','').strip()
-        if username == "Mani" and password == "MANI2662":
+        
+        # Admin strict credential login matching normalization 
+        if username.lower() == "mani" and password == "MANI2662":
             session['logged_in'] = True
             session['current_user'] = "Mani"
             session['is_admin'] = True
@@ -544,11 +549,62 @@ def login():
     </form>
     
     <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 15px;">
-        <button onclick="window.location.href='/login'">🆔 CHOOSE LOGIN</button>
         <button onclick="window.location.href='/register'">🎮 REGISTER ACCOUNT</button>
+        <button onclick="window.location.href='/forgot_password'">🔑 FORGOT PASSWORD</button>
     </div>
     """
     return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", login_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
+
+@app.route('/forgot_password', methods=['GET', 'POST'])
+def forgot_password():
+    success_banner = session.pop('success_flash', '')
+    error_banner = session.pop('error_flash', '')
+    live_feed = generate_live_activity_logs()
+    
+    if request.method == 'POST':
+        step = request.form.get('step')
+        if step == '1':
+            email = request.form.get('username','').strip()
+            record = query_db("SELECT password FROM users WHERE username=?", (email,), one=True)
+            if not record:
+                error_banner = "❌ This email address does not exist inside our active systems."
+            else:
+                otp = str(random.randint(100000, 999999))
+                if send_verification_email(email, otp, "Password Recovery"):
+                    session['reset_email'] = email
+                    session['reset_otp'] = otp
+                    session['cached_pass'] = record[0]
+                    success_banner = "🔑 Reset token pass code dispatched to your email address inbox."
+                else:
+                    error_banner = "❌ Internal Mail Server Connection Fault."
+        elif step == '2':
+            user_otp = request.form.get('otp_code','').strip()
+            if user_otp == session.get('reset_otp'):
+                success_banner = f"✅ Verified! Your account password is: [ {session.get('cached_pass')} ]"
+                session.pop('reset_otp', None)
+            else:
+                error_banner = "❌ Invalid verification OTP mismatch token code."
+
+    if 'reset_otp' in session:
+        forgot_html = """
+        <h5>🔑 ENTER PASSWORD RESET OTP</h5>
+        <form method="POST">
+            <input type="hidden" name="step" value="2">
+            <input type="text" name="otp_code" placeholder="ENTER 6-DIGIT EMAIL RESET CODE" required>
+            <button type="submit">VERIFY ACCOUNT TOKEN</button>
+        </form>
+        """
+    else:
+        forgot_html = """
+        <h5>🔑 PASSWORD RECOVERY LOG</h5>
+        <form method="POST">
+            <input type="hidden" name="step" value="1">
+            <input type="email" name="username" placeholder="ENTER YOUR REGISTERED EMAIL ADDRESS" required>
+            <button type="submit">SEND PASSWORD RESET OTP</button>
+        </form>
+        <button onclick="window.location.href='/login'" style="background:#12131a !important; border:1px solid #ff0055 !important; margin-top:10px;">RETURN TO LOGIN GATE</button>
+        """
+    return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", forgot_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -601,6 +657,7 @@ def register():
             <input type="text" name="referral" placeholder="REFERRAL INVITATION CODE (OPTIONAL)">
             <button type="submit">SEND EMAIL OTP DISPATCH</button>
         </form>
+        <button onclick="window.location.href='/login'" style="background:#12131a !important; border:1px solid #ff0055 !important; margin-top:10px;">BACK TO SECURITY TERMINAL</button>
         """
     return render_template_string(BASE_LAYOUT.replace("{% block content %}{% endblock %}", reg_html), dynamic_ticker=live_feed, msg_success=success_banner, msg_error=error_banner)
 
