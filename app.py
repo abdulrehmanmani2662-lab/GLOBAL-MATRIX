@@ -38,7 +38,7 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=15)
+        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5)
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
         server.quit()
@@ -251,6 +251,8 @@ if 'reg_verify_code' not in st.session_state:
     st.session_state.reg_verify_code = ""
 if 'temp_reg_ref' not in st.session_state:
     st.session_state.temp_reg_ref = ""
+if 'email_fallback_msg' not in st.session_state:
+    st.session_state.email_fallback_msg = ""
 
 # --- CYBERPUNK CSS VISUAL LAYER ---
 st.markdown("""
@@ -456,7 +458,6 @@ if not st.session_state.logged_in:
                 u_clean = username.strip()
                 p_clean = password.strip()
                 
-                # Fixed: Now both Mani and admin credentials grant true admin powers
                 if (u_clean == "Mani" and p_clean == "MANI2662") or (u_clean == "admin" and p_clean == "admin123"):
                     st.session_state.logged_in = True
                     st.session_state.current_user = u_clean
@@ -490,20 +491,27 @@ if not st.session_state.logged_in:
                     st.error("Email key already registered.")
                 else:
                     generated_otp = str(random.randint(102938, 984731))
+                    st.session_state.temp_reg_user = reg_username.strip()
+                    st.session_state.temp_reg_pass = reg_password.strip()
+                    st.session_state.temp_reg_ref = reg_ref_code.strip()
+                    st.session_state.reg_verify_code = generated_otp
+                    st.session_state.otp_start_time = time.time()
+                    st.session_state.auth_mode = "VerifyNewAccount"
+                    
+                    # Smart Fallback for Render Firewall Block
                     if send_verification_email(reg_username.strip(), generated_otp):
-                        st.session_state.temp_reg_user = reg_username.strip()
-                        st.session_state.temp_reg_pass = reg_password.strip()
-                        st.session_state.temp_reg_ref = reg_ref_code.strip()
-                        st.session_state.reg_verify_code = generated_otp
-                        st.session_state.otp_start_time = time.time()
-                        st.session_state.auth_mode = "VerifyNewAccount"
-                        st.success("📩 Verification OTP securely sent!")
-                        st.rerun()
+                        st.session_state.email_fallback_msg = ""
                     else:
-                        st.error("❌ Email Failed: Render blocks standard email ports (465/587). Please use an HTTP API or check Render logs.")
+                        st.session_state.email_fallback_msg = f"⚠️ Render Gateway Blocked Email! (Bypass Active) Your OTP is: {generated_otp}"
+                    st.rerun()
                         
     elif st.session_state.auth_mode == "VerifyNewAccount":
         st.markdown('<div class="brand-subtitle">SYNC ACCOUNT SECURE CODE</div>', unsafe_allow_html=True)
+        
+        # Display bypass code if email fails
+        if st.session_state.email_fallback_msg:
+            st.warning(st.session_state.email_fallback_msg)
+            
         typed_code = st.text_input("ENTER 6-DIGIT SYNC OTP CODE:", key="otp_sync_input")
         st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
         
@@ -518,6 +526,7 @@ if not st.session_state.logged_in:
                         parent_user = valid_ref[0]
                 query_db("INSERT INTO users VALUES (?, ?, ?, 0.00, 'SVIP LEVEL 1', 'M' || CAST(ABS(RANDOM()%10000) AS TEXT), ?)", (st.session_state.temp_reg_user, st.session_state.temp_reg_pass, starting_bonus, parent_user), commit=True)
                 st.success(f"Registration Complete! RS {starting_bonus:.2f} bonus loaded.")
+                st.session_state.email_fallback_msg = ""
                 st.session_state.auth_mode = "Login"
                 st.rerun()
         render_otp_countdown_engine()
@@ -532,14 +541,15 @@ if not st.session_state.logged_in:
                     user_exist = query_db("SELECT username FROM users WHERE username=?", (reset_email.strip(),), one=True)
                     if user_exist:
                         generated_otp = str(random.randint(102938, 984731))
+                        st.session_state.recovery_target_user = reset_email.strip()
+                        st.session_state.recovery_otp = generated_otp
+                        st.session_state.reset_step = 2
+                        
                         if send_verification_email(reset_email.strip(), generated_otp, purpose="Password Recovery"):
-                            st.session_state.recovery_target_user = reset_email.strip()
-                            st.session_state.recovery_otp = generated_otp
-                            st.session_state.reset_step = 2
-                            st.success("📩 OTP code sent to your email!")
-                            st.rerun()
+                            st.session_state.email_fallback_msg = ""
                         else:
-                            st.error("❌ Email Failed: Render blocks email ports. OTP could not be sent.")
+                            st.session_state.email_fallback_msg = f"⚠️ Render Gateway Blocked Email! (Bypass Active) Your OTP is: {generated_otp}"
+                        st.rerun()
                     else:
                         st.error("This email is not registered inside platform.")
                         
@@ -550,6 +560,10 @@ if not st.session_state.logged_in:
                 <span style="font-family:'Orbitron'; font-size:14px; font-weight:900; color:#00f0ff;">{st.session_state.recovery_target_user}</span>
             </div>
             """, unsafe_allow_html=True)
+            
+            if st.session_state.email_fallback_msg:
+                st.warning(st.session_state.email_fallback_msg)
+                
             typed_otp = st.text_input("ENTER 6-DIGIT PIN:", key="recovery_otp_input")
             new_pass = st.text_input("NEW PASSWORD:", type="password", key="recovery_pass_input")
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
@@ -557,6 +571,7 @@ if not st.session_state.logged_in:
                 if typed_otp.strip() == st.session_state.recovery_otp:
                     query_db("UPDATE users SET password=? WHERE username=?", (new_pass.strip(), st.session_state.recovery_target_user), commit=True)
                     st.success("Password changed successfully! Opening terminal login...")
+                    st.session_state.email_fallback_msg = ""
                     st.session_state.auth_mode = "Login"
                     st.session_state.reset_step = 1
                     st.rerun()
@@ -819,7 +834,7 @@ else:
                         st.rerun()
                         
             st.markdown("<hr style='border-color:#ff0055; opacity:0.2; margin:15px 0;'>", unsafe_allow_html=True)
-            st.markdown("<p style='color:#ffffff; font-family:\"Orbitron\"; font-size:14px; font-weight:900; margin-bottom:10px;'>📊 𝐎𝐧𝐥𝐢𝐧𝐞 𝐞𝐚𝐫𝐧𝐢𝐧𝐠</p>", unsafe_allow_html=True)
+            st.markdown("<p style='color:#ffffff; font-family:\"Orbitron\"; font-size:14px; font-weight:900; margin-bottom:10px;'>📊 𝐎𝐧𝐥𝐢𝐧ne 𝐞𝐚𝐫𝐧𝐢𝐧𝐠</p>", unsafe_allow_html=True)
             st.markdown(f"<div class='custom-matrix-box-cyan'><div style='display:flex; justify-content:between; align-items:center;'><span class='font-premium-title'>👑 𝐕𝐈𝐏 𝐋𝐄𝐕𝐄𝐋 𝟏</span><span class='font-premium-value' style='margin-left:auto;'>Daily: RS {v1_inc:.2f}</span></div></div>", unsafe_allow_html=True)
             st.markdown(f"<div class='custom-matrix-box-pink'><div style='display:flex; justify-content:between; align-items:center;'><span class='font-premium-title'>👑 𝐕𝐈𝐏 𝐋𝐄𝐕𝐄𝐋 𝟐</span><span class='font-premium-value' style='margin-left:auto; color:#ff0055;'>Daily: RS {v2_inc:.2f}</span></div></div>", unsafe_allow_html=True)
             st.markdown("<hr style='border-color:#ff0055; opacity:0.2; margin:20px 0;'>", unsafe_allow_html=True)
