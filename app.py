@@ -218,9 +218,9 @@ def generate_unlimited_fomo_pool(count=15):
 if 'logged_in' not in st.session_state:
     if 'persisted_user' in st.query_params:
         p_user = st.query_params['persisted_user']
-        if p_user == "Mani":
+        if p_user in ["Mani", "admin"]:
             st.session_state.logged_in = True
-            st.session_state.current_user = "Mani"
+            st.session_state.current_user = p_user
             st.session_state.is_admin = True
             st.session_state.selected_panel = "Pending Requests"
         else:
@@ -447,22 +447,26 @@ if not st.session_state.logged_in:
     
     if st.session_state.auth_mode == "Login":
         st.markdown('<div class="brand-subtitle">SECURE TERMINAL LOGIN</div>', unsafe_allow_html=True)
-        username = st.text_input("USERNAME / EMAIL:", placeholder="Enter your registered email")
-        password = st.text_input("PASSWORD:", type="password", placeholder="••••••••")
+        username = st.text_input("USERNAME / EMAIL:", placeholder="Enter your registered email", key="login_user_input")
+        password = st.text_input("PASSWORD:", type="password", placeholder="••••••••", key="login_pass_input")
         st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("LOGIN", use_container_width=True):
+        if st.button("LOGIN", use_container_width=True, key="execute_login_btn"):
             if username.strip() and password.strip():
-                if username.strip() == "Mani" and password.strip() == "MANI2662":
+                u_clean = username.strip()
+                p_clean = password.strip()
+                
+                # Fixed: Now both Mani and admin credentials grant true admin powers
+                if (u_clean == "Mani" and p_clean == "MANI2662") or (u_clean == "admin" and p_clean == "admin123"):
                     st.session_state.logged_in = True
-                    st.session_state.current_user = "Mani"
+                    st.session_state.current_user = u_clean
                     st.session_state.is_admin = True
                     st.session_state.selected_panel = "Pending Requests"
-                    st.query_params['persisted_user'] = "Mani"
+                    st.query_params['persisted_user'] = u_clean
                     st.rerun()
                 else:
-                    record = query_db("SELECT password, username FROM users WHERE username=?", (username.strip(),), one=True)
-                    if record and record[0] == password.strip():
+                    record = query_db("SELECT password, username FROM users WHERE username=?", (u_clean,), one=True)
+                    if record and record[0] == p_clean:
                         st.session_state.logged_in = True
                         st.session_state.current_user = record[1]
                         st.session_state.is_admin = False
@@ -474,12 +478,12 @@ if not st.session_state.logged_in:
                         
     elif st.session_state.auth_mode == "Register":
         st.markdown('<div class="brand-subtitle">CREATE NEW ACCOUNT</div>', unsafe_allow_html=True)
-        reg_username = st.text_input("REGISTRATION EMAIL KEY:")
-        reg_password = st.text_input("SYSTEM SECURITY CODE:", type="password")
-        reg_ref_code = st.text_input("INVITE / REFERRAL CODE (OPTIONAL):", placeholder="Enter parent code for RS 40.00 bonus")
+        reg_username = st.text_input("REGISTRATION EMAIL KEY:", key="reg_user_input")
+        reg_password = st.text_input("SYSTEM SECURITY CODE:", type="password", key="reg_pass_input")
+        reg_ref_code = st.text_input("INVITE / REFERRAL CODE (OPTIONAL):", placeholder="Enter parent code for RS 40.00 bonus", key="reg_ref_input")
         st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("💾 GENERATE VERIFICATION VIA EMAIL", use_container_width=True):
+        if st.button("💾 GENERATE VERIFICATION VIA EMAIL", use_container_width=True, key="submit_registration_btn"):
             if reg_username.strip() and reg_password.strip():
                 existing = query_db("SELECT username FROM users WHERE username=?", (reg_username.strip(),), one=True)
                 if existing:
@@ -500,10 +504,10 @@ if not st.session_state.logged_in:
                         
     elif st.session_state.auth_mode == "VerifyNewAccount":
         st.markdown('<div class="brand-subtitle">SYNC ACCOUNT SECURE CODE</div>', unsafe_allow_html=True)
-        typed_code = st.text_input("ENTER 6-DIGIT SYNC OTP CODE:")
+        typed_code = st.text_input("ENTER 6-DIGIT SYNC OTP CODE:", key="otp_sync_input")
         st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
         
-        if st.button("✔️ CONFIRM USER REGISTRATION", use_container_width=True):
+        if st.button("✔️ CONFIRM USER REGISTRATION", use_container_width=True, key="confirm_otp_btn"):
             if typed_code.strip() == st.session_state.reg_verify_code:
                 starting_bonus = 2.00
                 parent_user = ""
@@ -520,10 +524,10 @@ if not st.session_state.logged_in:
         
     elif st.session_state.auth_mode == "ResetPassword":
         st.markdown('<div class="brand-subtitle">ACCESS KEY RECOVERY</div>', unsafe_allow_html=True)
-        reset_email = st.text_input("TARGET EMAIL ROUTE:")
+        reset_email = st.text_input("TARGET EMAIL ROUTE:", key="reset_email_input")
         if st.session_state.reset_step == 1:
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-            if st.button("SEND CORE SYNC CODE", use_container_width=True):
+            if st.button("SEND CORE SYNC CODE", use_container_width=True, key="send_reset_otp_btn"):
                 if reset_email.strip():
                     user_exist = query_db("SELECT username FROM users WHERE username=?", (reset_email.strip(),), one=True)
                     if user_exist:
@@ -546,10 +550,10 @@ if not st.session_state.logged_in:
                 <span style="font-family:'Orbitron'; font-size:14px; font-weight:900; color:#00f0ff;">{st.session_state.recovery_target_user}</span>
             </div>
             """, unsafe_allow_html=True)
-            typed_otp = st.text_input("ENTER 6-DIGIT PIN:")
-            new_pass = st.text_input("NEW PASSWORD:", type="password")
+            typed_otp = st.text_input("ENTER 6-DIGIT PIN:", key="recovery_otp_input")
+            new_pass = st.text_input("NEW PASSWORD:", type="password", key="recovery_pass_input")
             st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
-            if st.button("🔧 RESET IDENTITY VAULT", use_container_width=True):
+            if st.button("🔧 RESET IDENTITY VAULT", use_container_width=True, key="finalize_reset_btn"):
                 if typed_otp.strip() == st.session_state.recovery_otp:
                     query_db("UPDATE users SET password=? WHERE username=?", (new_pass.strip(), st.session_state.recovery_target_user), commit=True)
                     st.success("Password changed successfully! Opening terminal login...")
@@ -562,13 +566,13 @@ if not st.session_state.logged_in:
     st.markdown("<hr style='border-color:#ff0055; opacity:0.3;'>", unsafe_allow_html=True)
     c1, c2, c3 = st.columns(3)
     with c1:
-        if st.button("LOGIN ID"):
+        if st.button("LOGIN ID", key="nav_switch_to_login"):
             st.session_state.auth_mode = "Login"; st.rerun()
     with c2:
-        if st.button("CREATE ACCOUNT"):
+        if st.button("CREATE ACCOUNT", key="nav_switch_to_register"):
             st.session_state.auth_mode = "Register"; st.rerun()
     with c3:
-        if st.button("FORGET PASSWORD"):
+        if st.button("FORGET PASSWORD", key="nav_switch_to_forget"):
             st.session_state.auth_mode = "ResetPassword"; st.session_state.reset_step = 1; st.rerun()
 
 # --- LOGGED IN ROUTINE PORTAL ---
@@ -617,9 +621,9 @@ else:
                             
         elif st.session_state.selected_panel == "System Settings Configuration":
             st.markdown("##### Global Settings Board")
-            new_ann = st.text_area("System Alert Text Notification:", value=announcement_text)
-            new_qr_url = st.text_input("Touch 'N Go QR Scan Link:", value=tng_scanner_url)
-            new_usdt = st.text_input("System USDT Address Configuration:", value=usdt_address)
+            new_ann = st.text_area("System Alert Text Notification:", value=announcement_text, key=f"adm_ann_txt")
+            new_qr_url = st.text_input("Touch 'N Go QR Scan Link:", value=tng_scanner_url, key=f"adm_qr_txt")
+            new_usdt = st.text_input("System USDT Address Configuration:", value=usdt_address, key=f"adm_usdt_txt")
             st.markdown("<p style='color:#00f0ff; font-weight:900; margin-top:15px;'>🎬 VIDEO LINK PLATFORM PARAMETERS</p>", unsafe_allow_html=True)
             ad_configs = {}
             for i in range(1, 6):
@@ -628,7 +632,7 @@ else:
                 ad_configs[f'ad{i}_url'] = st.text_input(f"Ad {i} Video Source Link:", value=old_url, key=f"adm_ad{i}_url")
                 ad_configs[f'ad{i}_rew'] = st.text_input(f"Ad {i} Reward Pay (RS):", value=str(old_rew), key=f"adm_ad{i}_rew")
                 
-            if st.button("SAVE CONFIGURATIONS NOW", use_container_width=True):
+            if st.button("SAVE CONFIGURATIONS NOW", use_container_width=True, key="save_admin_config_btn"):
                 query_db("UPDATE system_config SET value=? WHERE key='system_announcement'", (new_ann.strip(),), commit=True)
                 query_db("UPDATE system_config SET value=? WHERE key='tng_scanner_url'", (new_qr_url.strip(),), commit=True)
                 query_db("UPDATE system_config SET value=? WHERE key='usdt_address'", (new_usdt.strip(),), commit=True)
@@ -640,13 +644,13 @@ else:
                 
         elif st.session_state.selected_panel == "User Management":
             st.markdown("##### 👤 PLATFORM IDENTITY VAULT")
-            target_user = st.text_input("ENTER TARGET USER EMAIL:")
+            target_user = st.text_input("ENTER TARGET USER EMAIL:", key="adm_target_user_input")
             if target_user.strip():
                 user_res = query_db("SELECT balance FROM users WHERE username=?", (target_user.strip(),), one=True)
                 if user_res:
                     st.markdown(f"<div class='custom-matrix-box-cyan'>Current System Balance: <b style='color:#00f0ff;'>RS {user_res[0]:.2f}</b></div>", unsafe_allow_html=True)
-                    new_balance = st.number_input("SET NEW ACCOUNT BALANCE (RS):", min_value=0.0, value=float(user_res[0]))
-                    if st.button("🔥 COMMIT DIRECT BALANCE CHANGE", use_container_width=True):
+                    new_balance = st.number_input("SET NEW ACCOUNT BALANCE (RS):", min_value=0.0, value=float(user_res[0]), key="adm_new_bal_input")
+                    if st.button("🔥 COMMIT DIRECT BALANCE CHANGE", use_container_width=True, key="adm_save_user_bal_btn"):
                         query_db("UPDATE users SET balance=? WHERE username=?", (new_balance, target_user.strip()), commit=True)
                         st.success(f"Bounty Updated! New Balance is RS {new_balance:.2f}")
                         st.rerun()
@@ -710,19 +714,19 @@ else:
         st.markdown("<hr style='border-color:#ff0055; opacity:0.3;'>", unsafe_allow_html=True)
         ad_c1, ad_c2, ad_c3, ad_c4, ad_c5 = st.columns(5)
         with ad_c1:
-            if st.button("📥 DEPOSITS"):
+            if st.button("📥 DEPOSITS", key="adm_bottom_nav_deps"):
                 st.session_state.selected_panel = "Pending Requests"; st.rerun()
         with ad_c2:
-            if st.button("⚙️ MASTER"):
+            if st.button("⚙️ MASTER", key="adm_bottom_nav_master"):
                 st.session_state.selected_panel = "System Settings Configuration"; st.rerun()
         with ad_c3:
-            if st.button("👤 USER BAL"):
+            if st.button("👤 USER BAL", key="adm_bottom_nav_userbal"):
                 st.session_state.selected_panel = "User Management"; st.rerun()
         with ad_c4:
-            if st.button("💰 WITHDRAWS"):
+            if st.button("💰 WITHDRAWS", key="adm_bottom_nav_with"):
                 st.session_state.selected_panel = "Admin Withdrawals"; st.rerun()
         with ad_c5:
-            if st.button("📢 CAMPAIGNS"):
+            if st.button("📢 CAMPAIGNS", key="adm_bottom_nav_camps"):
                 st.session_state.selected_panel = "Admin Campaigns"; st.rerun()
 
     # --- CLIENT USER OPERATIONS DASHBOARD ---
@@ -756,7 +760,7 @@ else:
                     st.session_state.wheel_triggered = False
                     
                 if not st.session_state.wheel_triggered:
-                    if st.button("🎰 UNLOCK LUCKY SPIN SYSTEM", use_container_width=True):
+                    if st.button("🎰 UNLOCK LUCKY SPIN SYSTEM", use_container_width=True, key="trigger_wheel_btn"):
                         st.session_state.wheel_triggered = True
                         st.session_state.chosen_prize_idx = random.randint(0, 7)
                         st.rerun()
@@ -792,7 +796,7 @@ else:
                     </div>
                     """
                     components.html(wheel_html, height=300)
-                    if st.button("🎁 CLAIM SPIN BOUNTY RESULT", use_container_width=True):
+                    if st.button("🎁 CLAIM SPIN BOUNTY RESULT", use_container_width=True, key="claim_wheel_reward_btn"):
                         query_db("INSERT INTO lucky_spins VALUES (?, ?, ?)", (st.session_state.current_user, today_date, win_amt), commit=True)
                         query_db("UPDATE users SET balance = balance + ? WHERE username=?", (win_amt, st.session_state.current_user), commit=True)
                         st.session_state.wheel_triggered = False
@@ -841,7 +845,7 @@ else:
                                 st.markdown(f'<a href="{ad_url}" target="_blank" style="text-decoration:none;"><button style="background-color:#00f0ff; color:black; width:100%; border:none; padding:10px; border-radius:8px; font-weight:bold; margin-bottom:10px;">👉 CLICK TO OPEN AD VIDEO STREAM</button></a>', unsafe_allow_html=True)
                                 st.rerun()
                         else:
-                            st.link_button(f"🔗 RE-OPEN VIDEO AD {i} LINK", ad_url, use_container_width=True)
+                            st.link_button(f"🔗 RE-OPEN VIDEO AD {i} LINK", ad_url, use_container_width=True, key=f"lnk_ad_reopen_{i}")
                             if st.button(f"💰 CLAIM AD {i} REWARD", key=f"clk_ad{i}", use_container_width=True):
                                 query_db("INSERT INTO ad_logs VALUES (?, ?, ?)", (st.session_state.current_user, f'ad{i}', today_date), commit=True)
                                 query_db("UPDATE users SET balance = balance + ? WHERE username=?", (ad_rew, st.session_state.current_user), commit=True)
@@ -852,7 +856,7 @@ else:
                                 
         elif st.session_state.selected_panel == "Deposit":
             st.markdown("<h5 style='font-family:\"Orbitron\"; color:#00f0ff;'>SECURE DISPATCH NODE</h5>", unsafe_allow_html=True)
-            chosen_bank = st.selectbox("SELECT ROUTING NODE NETWORK:", MALAYSIAN_BANKS)
+            chosen_bank = st.selectbox("SELECT ROUTING NODE NETWORK:", MALAYSIAN_BANKS, key="usr_deposit_bank_select")
             if chosen_bank == "USDT (TRC-20) Crypto Network":
                 st.markdown(f"""
                 <div style='background:#1a090d; border:1px solid #a100ff; padding:12px; border-radius:10px; margin-bottom:12px;'>
@@ -864,12 +868,12 @@ else:
                 if tng_scanner_url:
                     st.markdown(f"<div style='text-align:center; margin-bottom:15px;'><img src='{tng_scanner_url}' width='140' style='border:2px solid #00f0ff; border-radius:12px;'/></div>", unsafe_allow_html=True)
                     
-            remitter_name = st.text_input("YOUR ACCOUNT HOLDER NAME / ACC NAME:")
-            trx_id_input = st.text_input("TRANSACTION REFERENCE CODE / TXID HASH:")
-            amount_input = st.number_input("RECHARGE QUANTITY AMOUNT (RS):", min_value=1.0, value=100.0)
+            remitter_name = st.text_input("YOUR ACCOUNT HOLDER NAME / ACC NAME:", key="usr_deposit_name_input")
+            trx_id_input = st.text_input("TRANSACTION REFERENCE CODE / TXID HASH:", key="usr_deposit_trx_input")
+            amount_input = st.number_input("RECHARGE QUANTITY AMOUNT (RS):", min_value=1.0, value=100.0, key="usr_deposit_amt_input")
             st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
             
-            if st.button("TRANSMIT INTERFACE PROOF", use_container_width=True):
+            if st.button("TRANSMIT INTERFACE PROOF", use_container_width=True, key="usr_submit_deposit_proof_btn"):
                 if remitter_name.strip() and trx_id_input.strip():
                     query_db("INSERT INTO deposits (username, bank, name, trx_id, amount, status) VALUES (?, ?, ?, ?, ?, 'Pending')", (st.session_state.current_user, chosen_bank, remitter_name.strip(), trx_id_input.strip(), amount_input), commit=True)
                     st.success("Transaction interface proof locked successfully! Processing check.")
@@ -878,12 +882,12 @@ else:
                     
         elif st.session_state.selected_panel == "Cashout":
             st.markdown("<h5 style='font-family:\"Orbitron\"; color:#00f0ff;'>EXECUTE SECURE WITHDRAWALS</h5>", unsafe_allow_html=True)
-            target_bank = st.selectbox("Target Bank Gateway:", MALAYSIAN_BANKS)
-            account_route = st.text_input("Account Number Route / Wallet Route:")
-            amount_input = st.number_input("Settle Amount Out (RS):", min_value=10.0)
+            target_bank = st.selectbox("Target Bank Gateway:", MALAYSIAN_BANKS, key="usr_withdraw_bank_select")
+            account_route = st.text_input("Account Number Route / Wallet Route:", key="usr_withdraw_acc_input")
+            amount_input = st.number_input("Settle Amount Out (RS):", min_value=10.0, key="usr_withdraw_amt_input")
             st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
             
-            if st.button("INITIATE SETTLEMENT TRANSFERS", use_container_width=True):
+            if st.button("INITIATE SETTLEMENT TRANSFERS", use_container_width=True, key="usr_submit_withdraw_btn"):
                 if wallet_bal >= amount_input:
                     query_db("UPDATE users SET balance = balance - ? WHERE username=?", (amount_input, st.session_state.current_user), commit=True)
                     query_db("INSERT INTO withdrawals (username, bank, account, amount, status) VALUES (?, ?, ?, ?, 'Pending')", (st.session_state.current_user, target_bank, account_route.strip(), amount_input), commit=True)
@@ -894,15 +898,15 @@ else:
                     
         elif st.session_state.selected_panel == "Promote_Video":
             st.markdown("<h5 style='font-family:\"Orbitron\"; color:#00f0ff;'>📢 SELF-SERVICE VIDEO PROMOTION</h5>", unsafe_allow_html=True)
-            adv_email = st.text_input("Your Registered Email:", value=st.session_state.current_user)
-            video_url = st.text_input("YouTube Video URL (To Promote):", placeholder="https://www.youtube.com/watch?v=...")
-            views_req = st.number_input("Target Views Wanted:", min_value=100, step=100, value=100)
+            adv_email = st.text_input("Your Registered Email:", value=st.session_state.current_user, key="usr_promo_email_input")
+            video_url = st.text_input("YouTube Video URL (To Promote):", placeholder="https://www.youtube.com/watch?v=...", key="usr_promo_url_input")
+            views_req = st.number_input("Target Views Wanted:", min_value=100, step=100, value=100, key="usr_promo_views_input")
             total_cost = views_req * 0.10
             st.info(f"💰 Total Campaign Cost: **RS {total_cost:.2f}**")
             st.markdown("⚠️ Send the exact amount to our network and enter the transaction code below.")
-            payment_trx = st.text_input("Transaction reference ID / TXID Hash:")
+            payment_trx = st.text_input("Transaction reference ID / TXID Hash:", key="usr_promo_trx_input")
             
-            if st.button("🚀 TRANSMIT CAMPAIGN FOR REVIEW", use_container_width=True):
+            if st.button("🚀 TRANSMIT CAMPAIGN FOR REVIEW", use_container_width=True, key="usr_submit_promo_btn"):
                 if adv_email.strip() and video_url.strip() and payment_trx.strip():
                     query_db("INSERT INTO ad_campaigns (advertiser_email, video_url, target_views, trx_id, status) VALUES (?, ?, ?, ?, 'Pending')", (adv_email.strip(), video_url.strip(), views_req, payment_trx.strip()), commit=True)
                     st.success("✅ Campaign submitted successfully! Waiting for admin activation.")
