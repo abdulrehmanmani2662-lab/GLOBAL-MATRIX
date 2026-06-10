@@ -19,7 +19,7 @@ app.secret_key = "GLOBAL_MATRIX_SUPER_SECRET_KEY_2026_EXCLUSIVE"
 SMTP_SERVER = "smtp-relay.brevo.com"
 SMTP_PORT = 587
 SENDER_EMAIL = "Globalmatrixteam.com@gmail.com" 
-SENDER_APP_PASSWORD = "xsmtpsib-bc1418aaa30eddf05bdadad2344c9f3290cbae0c3714bfd6ee51e822949180ce-vc7c469V1mDlM75C" 
+SENDER_APP_PASSWORD = "xsmtpsib-bc1418aaa30eddf05bdadad2344c9f3290cbae0c3714bfd6ee51e822949180ce-RJd5Mxgc3gMtLueH" 
 
 def send_verification_email(receiver_email, otp_code, purpose="Registration"):
     server = None
@@ -772,4 +772,14 @@ def update_user_balance():
 @app.route('/reply_ticket', methods=['POST'])
 def reply_ticket():
     if session.get('is_admin', False):
-        query_db("UPDATE support_tickets SET reply=?, status='Resolved' WHERE id=?", (request.form.get('reply_text'), request.form.get('ticket_
+        query_db("UPDATE support_tickets SET reply=?, status='Resolved' WHERE id=?", (request.form.get('reply_text'), request.form.get('ticket_id')), commit=True)
+    return redirect(url_for('index', panel='Admin_Tickets'))
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
