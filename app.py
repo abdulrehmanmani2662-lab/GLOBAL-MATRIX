@@ -38,7 +38,9 @@ def send_verification_email(receiver_email, otp_code, purpose="Registration"):
         """
         msg.attach(MIMEText(body, 'html'))
         
-        server = smtplib.SMTP_SSL('smtp.gmail.com', 465, timeout=5)
+        # Switched to Port 587 with STARTTLS for better hosting compatibility
+        server = smtplib.SMTP('smtp.gmail.com', 587, timeout=10)
+        server.starttls()
         server.login(SENDER_EMAIL, SENDER_APP_PASSWORD)
         server.sendmail(SENDER_EMAIL, receiver_email, msg.as_string())
         server.quit()
@@ -251,8 +253,6 @@ if 'reg_verify_code' not in st.session_state:
     st.session_state.reg_verify_code = ""
 if 'temp_reg_ref' not in st.session_state:
     st.session_state.temp_reg_ref = ""
-if 'email_fallback_msg' not in st.session_state:
-    st.session_state.email_fallback_msg = ""
 
 # --- CYBERPUNK CSS VISUAL LAYER ---
 st.markdown("""
@@ -491,26 +491,21 @@ if not st.session_state.logged_in:
                     st.error("Email key already registered.")
                 else:
                     generated_otp = str(random.randint(102938, 984731))
-                    st.session_state.temp_reg_user = reg_username.strip()
-                    st.session_state.temp_reg_pass = reg_password.strip()
-                    st.session_state.temp_reg_ref = reg_ref_code.strip()
-                    st.session_state.reg_verify_code = generated_otp
-                    st.session_state.otp_start_time = time.time()
-                    st.session_state.auth_mode = "VerifyNewAccount"
                     
-                    # Smart Fallback for Render Firewall Block
+                    # Target ONLY Email delivery now (No screen leak)
                     if send_verification_email(reg_username.strip(), generated_otp):
-                        st.session_state.email_fallback_msg = ""
+                        st.session_state.temp_reg_user = reg_username.strip()
+                        st.session_state.temp_reg_pass = reg_password.strip()
+                        st.session_state.temp_reg_ref = reg_ref_code.strip()
+                        st.session_state.reg_verify_code = generated_otp
+                        st.session_state.otp_start_time = time.time()
+                        st.session_state.auth_mode = "VerifyNewAccount"
+                        st.rerun()
                     else:
-                        st.session_state.email_fallback_msg = f"⚠️ Render Gateway Blocked Email! (Bypass Active) Your OTP is: {generated_otp}"
-                    st.rerun()
+                        st.error("❌ Email send nahi ho saki! Render server SMTP ports block kar raha hai ya aapka Gmail App Password galat hai.")
                         
     elif st.session_state.auth_mode == "VerifyNewAccount":
         st.markdown('<div class="brand-subtitle">SYNC ACCOUNT SECURE CODE</div>', unsafe_allow_html=True)
-        
-        # Display bypass code if email fails
-        if st.session_state.email_fallback_msg:
-            st.warning(st.session_state.email_fallback_msg)
             
         typed_code = st.text_input("ENTER 6-DIGIT SYNC OTP CODE:", key="otp_sync_input")
         st.markdown("<div style='margin-top:15px;'></div>", unsafe_allow_html=True)
@@ -526,7 +521,6 @@ if not st.session_state.logged_in:
                         parent_user = valid_ref[0]
                 query_db("INSERT INTO users VALUES (?, ?, ?, 0.00, 'SVIP LEVEL 1', 'M' || CAST(ABS(RANDOM()%10000) AS TEXT), ?)", (st.session_state.temp_reg_user, st.session_state.temp_reg_pass, starting_bonus, parent_user), commit=True)
                 st.success(f"Registration Complete! RS {starting_bonus:.2f} bonus loaded.")
-                st.session_state.email_fallback_msg = ""
                 st.session_state.auth_mode = "Login"
                 st.rerun()
         render_otp_countdown_engine()
@@ -541,15 +535,14 @@ if not st.session_state.logged_in:
                     user_exist = query_db("SELECT username FROM users WHERE username=?", (reset_email.strip(),), one=True)
                     if user_exist:
                         generated_otp = str(random.randint(102938, 984731))
-                        st.session_state.recovery_target_user = reset_email.strip()
-                        st.session_state.recovery_otp = generated_otp
-                        st.session_state.reset_step = 2
                         
                         if send_verification_email(reset_email.strip(), generated_otp, purpose="Password Recovery"):
-                            st.session_state.email_fallback_msg = ""
+                            st.session_state.recovery_target_user = reset_email.strip()
+                            st.session_state.recovery_otp = generated_otp
+                            st.session_state.reset_step = 2
+                            st.rerun()
                         else:
-                            st.session_state.email_fallback_msg = f"⚠️ Render Gateway Blocked Email! (Bypass Active) Your OTP is: {generated_otp}"
-                        st.rerun()
+                            st.error("❌ Email send nahi ho saki! Render network issue ya SMTP config check karein.")
                     else:
                         st.error("This email is not registered inside platform.")
                         
@@ -560,9 +553,6 @@ if not st.session_state.logged_in:
                 <span style="font-family:'Orbitron'; font-size:14px; font-weight:900; color:#00f0ff;">{st.session_state.recovery_target_user}</span>
             </div>
             """, unsafe_allow_html=True)
-            
-            if st.session_state.email_fallback_msg:
-                st.warning(st.session_state.email_fallback_msg)
                 
             typed_otp = st.text_input("ENTER 6-DIGIT PIN:", key="recovery_otp_input")
             new_pass = st.text_input("NEW PASSWORD:", type="password", key="recovery_pass_input")
@@ -571,7 +561,6 @@ if not st.session_state.logged_in:
                 if typed_otp.strip() == st.session_state.recovery_otp:
                     query_db("UPDATE users SET password=? WHERE username=?", (new_pass.strip(), st.session_state.recovery_target_user), commit=True)
                     st.success("Password changed successfully! Opening terminal login...")
-                    st.session_state.email_fallback_msg = ""
                     st.session_state.auth_mode = "Login"
                     st.session_state.reset_step = 1
                     st.rerun()
